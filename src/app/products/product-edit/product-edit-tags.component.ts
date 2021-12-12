@@ -9,14 +9,16 @@ import { Product } from '../product';
 export class ProductEditTagsComponent implements OnInit {
   errorMessage: string;
   newTags = '';
-  product = { id: 1, category: 'test', tags: ['test'] };
+  product: Product;
 
   constructor(private route: ActivatedRoute) { }
 
   ngOnInit(): void {
+    this.route.parent.data.subscribe(data => {
+      this.product = data['resolvedData'].product;
+    });
   }
 
-  // Add the defined tags
   addTags(): void {
     if (!this.newTags) {
       this.errorMessage = 'Enter the search keywords separated by commas and then press Add';
@@ -28,7 +30,6 @@ export class ProductEditTagsComponent implements OnInit {
     }
   }
 
-  // Remove the tag from the array of tags.
   removeTag(idx: number): void {
     this.product.tags.splice(idx, 1);
   }

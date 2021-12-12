@@ -2,9 +2,9 @@ import {Component, OnInit} from '@angular/core';
 
 import {MessageService} from '../../messages/message.service';
 
-import {Product} from '../product';
+import {Product, ProductResolved} from '../product';
 import {ProductService} from '../product.service';
-import {ActivatedRoute, Router} from "@angular/router";
+import {ActivatedRoute, Router} from '@angular/router';
 
 @Component({
   templateUrl: './product-edit.component.html',
@@ -14,7 +14,23 @@ export class ProductEditComponent implements OnInit {
   pageTitle = 'Product Edit';
   errorMessage: string;
 
-  product: Product;
+  private dataIsValid: { [key: string]: boolean; } = {};
+
+  private currentProduct: Product;
+  private originalProduct: Product;
+
+  get product(): Product {
+    return this.currentProduct;
+  }
+
+  set product(value: Product) {
+    this.currentProduct = value;
+    this.originalProduct = {...value};
+  }
+
+  get isDirty(): boolean {
+    return JSON.stringify(this.originalProduct) !== JSON.stringify(this.currentProduct);
+  }
 
   constructor(private productService: ProductService,
               private messageService: MessageService,
@@ -23,22 +39,14 @@ export class ProductEditComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    console.log('initialized');
-    this.route.paramMap.subscribe(
-      params => {
-        const id = +params.get('id');
-        this.getProduct(id);
-      }
-    );
-
+    this.route.data
+      .subscribe(data => {
+        const resolvedData: ProductResolved = data['resolvedData'];
+        this.errorMessage = resolvedData.error;
+        this.onProductRetrieved(resolvedData.product);
+      });
   }
 
-  getProduct(id: number): void {
-    this.productService.getProduct(id).subscribe({
-      next: product => this.onProductRetrieved(product),
-      error: err => this.errorMessage = err
-    });
-  }
 
   onProductRetrieved(product: Product): void {
     this.product = product;
@@ -69,7 +77,7 @@ export class ProductEditComponent implements OnInit {
   }
 
   saveProduct(): void {
-    if (true) {
+    if (this.isValid()) {
       if (this.product.id === 0) {
         this.productService.createProduct(this.product).subscribe({
           next: () => this.onSaveComplete(`The new ${this.product.productName} was saved`),
@@ -93,5 +101,26 @@ export class ProductEditComponent implements OnInit {
 
     // Navigate back to the product list
     this.router.navigateByUrl('/products');
+  }
+
+  validate(): void {
+    this.dataIsValid['info'] = this.isInfoValid();
+    this.dataIsValid['tags'] = this.isTagsValid();
+  }
+
+  private isInfoValid(): boolean {
+    return this.product.productName &&
+      this.product.productName.length >= 3 &&
+      !!this.product.productCode;
+  }
+
+  private isTagsValid(): boolean {
+    return this.product.category &&
+      this.product.category.length >= 3;
+  }
+
+  isValid(path?: string): boolean {
+    this.validate();
+    return this.dataIsValid[path] || (Object.keys(this.dataIsValid).every(key => this.dataIsValid[key] === true));
   }
 }
